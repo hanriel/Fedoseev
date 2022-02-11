@@ -115,9 +115,6 @@
         state: present
     - name: Update apt and install docker-ce
       apt: update_cache=yes name=docker-ce state=latest
-    #- name: Install Docker Module for Python
-    #  pip:
-    #    name: docker
     - name: Clone wsr-skillcloud git repo
       git:
         repo: 'https://github.com/Jeniston14/wsr-skillcloud'
@@ -158,6 +155,7 @@
           path: /skillcloud-nginx/balance
         name: balance
         tag: balance
+
     - name: Docker compose
       docker_compose:
         project_src: /skillcloud-nginx
