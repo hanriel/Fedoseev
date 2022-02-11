@@ -1,0 +1,144 @@
+---
+  - hosts: skillcloud
+    become: true
+    vars:
+      configured_port: 1834
+    tasks:
+    - name: Set configured port fact
+      set_fact:
+        configured_port: "{{ ansible_port }}"
+
+    # From localhost, check if we're able to reach {{ inventory_hostname }} on
+    # port 22
+    - name: Check if we're using the default SSH port
+      wait_for:
+        port: "22"
+        state: "started"
+        host: "{{ inventory_hostname }}"
+        connect_timeout: "3"
+        timeout: "5"
+      delegate_to: "localhost"
+      ignore_errors: "yes"
+      register: default_ssh
+
+    # If reachable, continue the following tasks with this port
+    - name: Set inventory ansible_port to default
+      set_fact:
+        ansible_port: "22"
+      when: default_ssh is defined and default_ssh.changed
+      register: ssh_port_set
+
+    # If unreachable on port 22, check if we're able to reach
+    # {{ inventory_hostname }} on {{ ansible_port }} provided by the inventory
+    # from localhost
+    - name: Check if we're using the inventory-provided SSH port
+      wait_for:
+        port: "{{ ansible_port }}"
+        state: "started"
+        host: "{{ inventory_hostname }}"
+        connect_timeout: "5"
+        timeout: "10"
+      delegate_to: "localhost"
+      ignore_errors: "yes"
+      register: configured_ssh
+      when: default_ssh is defined and
+            default_ssh.changed is undefined
+
+    # If {{ ansible_port }} is reachable, we don't need to do anything special
+    - name: SSH port is configured properly
+      debug:
+        msg: "SSH port is configured properly"
+      when: configured_ssh is defined and
+            configured_ssh.state is defined and
+            configured_ssh.changed
+      register: ssh_port_set
+
+    # If the SSH port is neither the default or the configured, give up.
+    - name: Fail if SSH port was not auto-detected (unknown)
+      fail:
+        msg: "The SSH port is neither 22 or {{ ansible_port }}."
+      when: ssh_port_set is undefined
+    
+    #CURL INSTALL
+    - name: Update cache and Install curl
+      apt:
+        update_cache: yes
+        name: curl
+        state: latest
+    #RECONFIGURE SSH
+    - name: Setup alternate SSH port
+      lineinfile: dest=/etc/ssh/sshd_config regexp='^#Port' line='Port {{ configured_port }}'
+    - name: Setup SSH keys
+      lineinfile: dest=/etc/ssh/sshd_config regexp='^#PubkeyAuthentication' line='PubkeyAuthentication yes'
+    
+    - name: Restart sshd
+      service:
+        name: sshd
+        state: restarted
+    - name: Ensure we use the configured SSH port for the remainder of the role
+      set_fact:
+        ansible_port: "{{ configured_port }}"
+
+    #ENABLE UFW
+    - name: Enable UFW and allow all
+      ufw:
+        state: enabled
+        policy: allow 
+    - name: UFW open ports
+      ufw:
+        rule: allow
+        port: '{{ item }}'
+      loop:
+        - 80
+        - 8080
+        - 1834
+
+    #CREATE USERS BY FILE
+
+    #DOCKER INSTALL
+    - name: Install aptitude using apt
+      apt: name=aptitude state=latest update_cache=yes force_apt_get=yes
+    - name: Install required system packages
+      apt: name={{ item }} state=latest update_cache=yes
+      loop: [ 'apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common', 'python3-pip', 'virtualenv', 'python3-setuptools']
+    - name: Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+    - name: Add Docker Repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu bionic stable
+        state: present
+    - name: Update apt and install docker-ce
+      apt: update_cache=yes name=docker-ce state=latest
+    - name: Install Docker Module for Python
+      pip:
+        name: docker
+    - name: Clone git repo
+      git:
+        repo: 'https://github.com/Jeniston14/wsr-skillcloud'
+        dest: /root/wsr-skillcloud
+    - name: Start installing Docker compose
+      script: /root/wsr-skillcloud/docker-compose.sh
+    - name: Create folder for Docker Build
+      file:
+        path: /skillcloud-nginx
+        state: directory
+    - name: Copy files for build
+      shell: cp /root/wsr-skillcloud/index.html /skillcloud-nginx/index.html
+    - name: Get IPs
+      debug:
+        msg: "{{ lookup('dig', ansible_host) }}"
+    #- name: Write IP addreses
+#
+    - name: Copy files for build1
+      shell: cp /root/wsr-skillcloud/nginx.conf /skillcloud-nginx/nginx.conf
+    - name: Copy files for build2
+      shell: cp /root/wsr-skillcloud/Dockerfile-site /skillcloud-nginx/
+    - name: Copy files for build3
+      shell: cp /root/wsr-skillcloud/Dockerfile-balance /skillcloud-nginx/Dockerfile-balance
+    - name: Copy files for build4
+      shell: cp /root/wsr-skillcloud/docker-compose.yml /skillcloud-nginx/docker-compose.yml
+    - name: Docker compose
+      docker_compose:
+        project_src: /skillcloud-nginx

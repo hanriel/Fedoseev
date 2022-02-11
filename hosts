@@ -1,0 +1,11 @@
+
+[skillcloud]
+pr1 ansible_host=10.1.239.162
+pr2 ansible_host=10.1.239.163
+pr3 ansible_host=10.1.239.164
+
+[skillcloud:vars]
+ansible_user=root
+ansible_password=toortoor
+ansible_port=1834
+
