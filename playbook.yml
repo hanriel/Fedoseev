@@ -111,10 +111,10 @@
         state: present
     - name: Update apt and install docker-ce
       apt: update_cache=yes name=docker-ce state=latest
-    - name: Install Docker Module for Python
-      pip:
-        name: docker
-    - name: Clone git repo
+    #- name: Install Docker Module for Python
+    #  pip:
+    #    name: docker
+    - name: Clone wsr-skillcloud git repo
       git:
         repo: 'https://github.com/Jeniston14/wsr-skillcloud'
         dest: /root/wsr-skillcloud
@@ -126,11 +126,6 @@
         state: directory
     - name: Copy files for build
       shell: cp /root/wsr-skillcloud/index.html /skillcloud-nginx/index.html
-    - name: Get IPs
-      debug:
-        msg: "{{ lookup('dig', ansible_host) }}"
-    #- name: Write IP addreses
-#
     - name: Copy files for build1
       shell: cp /root/wsr-skillcloud/nginx.conf /skillcloud-nginx/nginx.conf
     - name: Copy files for build2
