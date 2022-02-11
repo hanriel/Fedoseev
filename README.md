@@ -20,5 +20,5 @@ Run width inventory file: `ansible-playbook playbook.yml -i hosts`
 ## Stage 2:
 
  - [x] Build docker
- - [x] Start docker-compose
+ - [ ] Start docker-compose
  - [ ] Check balance

@@ -155,7 +155,14 @@
           path: /skillcloud-nginx/balance
         name: balance
         tag: balance
-
+    
+    #- name: Setup docker name keys
+    #  lineinfile: dest=/etc/ssh/sshd_config regexp='^#PubkeyAuthentication' line='PubkeyAuthentication yes'
+    
+    # - name: Setup docker server keys
+    #  lineinfile: dest=/etc/ssh/sshd_config regexp='^#PubkeyAuthentication' line='PubkeyAuthentication yes'
+    
+    
     - name: Docker compose
       docker_compose:
         project_src: /skillcloud-nginx
