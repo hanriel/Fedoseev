@@ -93,6 +93,10 @@
         - 8080
         - 1834
 
+    - name: Restart UFW
+      service:
+        name: ufw
+        state: restarted
     #CREATE USERS BY FILE
 
     #DOCKER INSTALL
@@ -120,20 +124,40 @@
         dest: /root/wsr-skillcloud
     - name: Start installing Docker compose
       script: /root/wsr-skillcloud/docker-compose.sh
-    - name: Create folder for Docker Build
+    - name: Create folder for Docker Builds
       file:
         path: /skillcloud-nginx
         state: directory
+    - name: Create folder for site build
+      file:
+        path: /skillcloud-nginx/site
+        state: directory
+    - name: Create folder for balance build
+      file:
+        path: /skillcloud-nginx/balance
+        state: directory
     - name: Copy files for build
-      shell: cp /root/wsr-skillcloud/index.html /skillcloud-nginx/index.html
+      shell: cp /root/wsr-skillcloud/index.html /skillcloud-nginx/site/index.html
     - name: Copy files for build1
-      shell: cp /root/wsr-skillcloud/nginx.conf /skillcloud-nginx/nginx.conf
+      shell: cp /root/wsr-skillcloud/nginx.conf /skillcloud-nginx/balance/nginx.conf
     - name: Copy files for build2
-      shell: cp /root/wsr-skillcloud/Dockerfile-site /skillcloud-nginx/
+      shell: cp /root/wsr-skillcloud/Dockerfile-site /skillcloud-nginx/site/Dockerfile
     - name: Copy files for build3
-      shell: cp /root/wsr-skillcloud/Dockerfile-balance /skillcloud-nginx/Dockerfile-balance
+      shell: cp /root/wsr-skillcloud/Dockerfile-balance /skillcloud-nginx/balance/Dockerfile
     - name: Copy files for build4
       shell: cp /root/wsr-skillcloud/docker-compose.yml /skillcloud-nginx/docker-compose.yml
+    - name: Docker build site
+      docker_image:
+        build:
+          path: /skillcloud-nginx/site
+        name: site
+        tag: site
+    - name: Docker build balance
+      docker_image:
+        build:
+          path: /skillcloud-nginx/balance
+        name: balance
+        tag: balance
     - name: Docker compose
       docker_compose:
         project_src: /skillcloud-nginx
